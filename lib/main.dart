@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'ui/widgets/spy_app_bar.dart';
 import 'ui/widgets/spy_background.dart';
+import 'screens/list_screen.dart';
+import 'services/fake_service.dart';
+import 'services/person_storage_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,8 +33,17 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final UserService _userService = const UserService();
+  final PersonStorageService _storageService = PersonStorageService.instance;
+  bool _isGenerating = false;
 
   static const red = Color(0xFFFF4D4D);
 
@@ -39,7 +51,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: SpyAppBar(
-        onAllIdentities: () => debugPrint('All identities pressed'),
+        onAllIdentities: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserListScreen()),
+        ),
       ),
       body: SpyBackground(
         child: Center(
@@ -128,16 +143,16 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.add_moderator, size: 20),
-                    label: const Text(
-                      "CREATE IDENTITY",
-                      style: TextStyle(
+                    label: Text(
+                      _isGenerating ? "GENERATING..." : "CREATE IDENTITY",
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
                         fontFamily: 'monospace',
                       ),
                     ),
-                    onPressed: () => debugPrint("Create identity pressed"),
+                    onPressed: _isGenerating ? null : _generateRandomIdentities,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -147,5 +162,52 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _generateRandomIdentities() async {
+    setState(() => _isGenerating = true);
+
+    try {
+      // Creamos las 5 identidades
+      final persons = await _userService.fetchPersons();
+
+      // Guardamos las 5 identidades en el local storage
+      for (final person in persons) {
+        await _storageService.savePerson(person);
+      }
+
+      if (mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Generated ${persons.length} new identities successfully!',
+            ),
+            backgroundColor: Colors.green.withValues(alpha: 0.8),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Ir a la nueva pagina para mostrar indetidades
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserListScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate identities: $e'),
+            backgroundColor: red.withValues(alpha: 0.8),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
   }
 }
