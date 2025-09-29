@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+//fondo de la app
 class SpyBackground extends StatelessWidget {
   final Widget child;
   const SpyBackground({super.key, required this.child});

@@ -9,6 +9,8 @@ class UserService {
 
   const UserService({this.locale = "ru_RU", this.quantity = 5});
 
+  //obtener personas usando la api de fakerapi
+
   Future<List<Person>> fetchPersons() async {
     final url = Uri.parse(
       "https://fakerapi.it/api/v1/persons?_locale=$locale&_quantity=$quantity",

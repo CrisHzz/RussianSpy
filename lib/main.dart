@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'ui/widgets/spy_app_bar.dart';
 import 'ui/widgets/spy_background.dart';
+import 'screens/list_screen.dart';
+import 'screens/form_screen.dart';
+import 'providers/person_provider.dart';
 
+//inicio de la app
 void main() {
   runApp(const MyApp());
 }
@@ -11,36 +16,49 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'RUSSIAN SPY',
-      theme: ThemeData.dark().copyWith(
-        primaryColor: const Color(0xFF0D1117),
-        scaffoldBackgroundColor: const Color(0xFF0D1117),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF161B22),
-          elevation: 0,
+    return ChangeNotifierProvider(
+      create: (context) => PersonProvider(),
+      child: MaterialApp(
+        title: 'RUSSIAN SPY',
+        theme: ThemeData.dark().copyWith(
+          primaryColor: const Color(0xFF0D1117),
+          scaffoldBackgroundColor: const Color(0xFF0D1117),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF161B22),
+            elevation: 0,
+          ),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.redAccent,
+            brightness: Brightness.dark,
+          ),
         ),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.redAccent,
-          brightness: Brightness.dark,
-        ),
+        home: const HomeScreen(),
       ),
-      home: const HomeScreen(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   static const red = Color(0xFFFF4D4D);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: SpyAppBar(
-        onAllIdentities: () => debugPrint('All identities pressed'),
-      ),
+    return Consumer<PersonProvider>(
+      builder: (context, personProvider, child) {
+        return Scaffold(
+          appBar: SpyAppBar(
+            onAllIdentities: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const UserListScreen()),
+            ),
+          ),
       body: SpyBackground(
         child: Center(
           child: SingleChildScrollView(
@@ -128,16 +146,16 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.add_moderator, size: 20),
-                    label: const Text(
-                      "CREATE IDENTITY",
-                      style: TextStyle(
+                    label: Text(
+                      personProvider.isLoading ? "GENERATING..." : "CREATE IDENTITY",
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
                         fontFamily: 'monospace',
                       ),
                     ),
-                    onPressed: () => debugPrint("Create identity pressed"),
+                    onPressed: personProvider.isLoading ? null : () => _generateIdentities(personProvider),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -145,7 +163,39 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
-      ),
+        ),
+      );
+    },
     );
+  }
+
+  Future<void> _generateIdentities(PersonProvider provider) async {
+    await provider.generateIdentities();
+    
+    if (mounted) {
+      if (provider.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage),
+            backgroundColor: red.withValues(alpha: 0.8),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Generated 5 new identities successfully!'),
+            backgroundColor: Colors.green.withValues(alpha: 0.8),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        
+        // Navigate to list screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserListScreen()),
+        );
+      }
+    }
   }
 }

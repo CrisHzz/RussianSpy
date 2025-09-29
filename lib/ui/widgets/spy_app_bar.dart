@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+//barra de la app header
 class SpyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onAllIdentities;
 
